@@ -1,8 +1,106 @@
+# ============================================================
+# GITIGNORE - STACK PAPERCLIP ENTERPRISE
+# ============================================================
+
+# ── Environment & Secrets ───────────────────────────────────
 .env
-*.credentials.json
-node_modules/
-.next/
-__pycache__/
-*.pyc
+.env.local
+.env.*.local
+*.secret
+*.key
+credentials.json
+
+# ── Claude Config (personnel) ───────────────────────────────
+.claude/
+.claude-config/
+opencode-personal/
+
+# ── Docker volumes & data ───────────────────────────────────
+postgres_data/
+redis_data/
+gitea_data/
+chroma_data/
+mem0_data/
+paperclip_data/
+playwright_tests/
+playwright_results/
+
+# ── Logs ────────────────────────────────────────────────────
+*.log
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── OS Files ────────────────────────────────────────────────
 .DS_Store
-/tmp/
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
+
+# ── IDEs & Editors ──────────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# ── Node.js ─────────────────────────────────────────────────
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+yarn.lock
+
+# ── Python ──────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+env/
+ENV/
+
+# ── Build artifacts ─────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+.cache/
+
+# ── Temporary files ─────────────────────────────────────────
+tmp/
+temp/
+*.tmp
+*.bak
+*.backup
+
+# ── Git ─────────────────────────────────────────────────────
+.git/
+.gitattributes
+
+# ── Stack-specific ──────────────────────────────────────────
+# Cloned repos (si vous clonez paperclip-repo localement)
+paperclip-repo/
+
+# Backups
+backups/
+*.sql
+
+# Test data
+test-data/
+
+# Session cookies
+/tmp/pc-inject.txt
+
+# ── Keep these ──────────────────────────────────────────────
+# (exceptions to ignore)
+!.env.example
+!.gitignore
+!.gitkeep

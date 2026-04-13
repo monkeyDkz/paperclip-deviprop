@@ -25,7 +25,7 @@
     "slug": "cto",
     "model": "claude-opus-4-6",
     "prompt_file": "agents/prompts/cto.txt",
-    "prompt_length": 4895
+    "prompt_length": 5508
   },
   {
     "name": "Content Writer",
@@ -53,7 +53,7 @@
     "slug": "devops",
     "model": "claude-sonnet-4-6",
     "prompt_file": "agents/prompts/devops.txt",
-    "prompt_length": 3515
+    "prompt_length": 4525
   },
   {
     "name": "Growth Lead",

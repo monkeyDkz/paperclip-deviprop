@@ -38,17 +38,39 @@ Dockerfile, docker-compose, CI. Vérifier docker compose up fonctionne. Workflow
 cd /tmp && git clone http://gitea:3000/stack-pirates/REPO.git && cd REPO
 git config user.email "agent@paperclip.local"
 git config user.name "DevOps"
-git checkout -b "feature/$ISSUE_IDENTIFIER-slug"
+BRANCH="feature/$ISSUE_IDENTIFIER-slug"
+git checkout -b "$BRANCH"
 # ... faire les modifications ...
 git add -A && git commit -m "[IDENTIFIER] description
 
 Co-Authored-By: Paperclip <noreply@paperclip.ing>"
-git push origin "feature/$ISSUE_IDENTIFIER-slug"
+git push origin "$BRANCH"
+
 # Créer PR
-curl -s -X POST "http://gitea:3000/api/v1/repos/stack-pirates/REPO/pulls" \
+PR_RESPONSE=$(curl -s -X POST "http://gitea:3000/api/v1/repos/stack-pirates/REPO/pulls" \
   -H "Authorization: token $GITEA_API_TOKEN" \
   -H "Content-Type: application/json" \
-  -d '{"title": "[IDENTIFIER] titre", "body": "Changements: ...", "head": "BRANCH", "base": "main"}'
+  -d '{"title": "[IDENTIFIER] titre", "body": "Changements: ...", "head": "'"$BRANCH"'", "base": "main"}')
+PR_NUMBER=$(echo "$PR_RESPONSE" | jq -r '.number')
+
+### Etape 4.5 : Déclencher déploiement preview sur Dokploy
+# Trigger Dokploy preview deployment
+PREVIEW_RESPONSE=$(curl -s -X POST "${DOKPLOY_WEBHOOK_URL}/preview-deploy" \
+  -H "Content-Type: application/json" \
+  -H "X-Dokploy-Token: ${DOKPLOY_API_TOKEN}" \
+  -d '{
+    "repo": "REPO_NAME",
+    "branch": "'"$BRANCH"'",
+    "pr_number": '"$PR_NUMBER"'
+  }')
+
+PREVIEW_URL=$(echo "$PREVIEW_RESPONSE" | jq -r '.preview_url // "Preview deployment started"')
+
+# Commenter sur la PR avec l'URL de preview
+curl -s -X POST "http://gitea:3000/api/v1/repos/stack-pirates/REPO/issues/$PR_NUMBER/comments" \
+  -H "Authorization: token $GITEA_API_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"body": "🚀 **Preview deployment in progress**\n\n📍 Preview will be available at: '"$PREVIEW_URL"'\n\n⏳ Deployment takes ~2-5 minutes. Check back soon!"}'
 
 ### Etape 5 : Fermer la tâche
 curl -s -X PATCH "$PAPERCLIP_API_URL/api/issues/$PAPERCLIP_TASK_ID" \
