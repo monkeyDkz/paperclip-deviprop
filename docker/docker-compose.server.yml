@@ -55,7 +55,8 @@ services:
 
   paperclip:
     build:
-      context: ../paperclip-repo
+      context: ./paperclip-repo
+      dockerfile: ../Dockerfile.paperclip
     container_name: paperclip
     restart: unless-stopped
     environment:
