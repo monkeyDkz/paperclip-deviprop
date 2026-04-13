@@ -1,0 +1,107 @@
+# ============================================================
+# PAPERCLIP STACK — SERVER CONFIGURATION
+# Adapté pour serveur avec PostgreSQL, Redis, Gitea, Dokploy déjà installés
+# ============================================================
+# Usage:
+#   docker compose -f docker/docker-compose.server.yml up -d
+# ============================================================
+
+services:
+
+  # ── AI / MEMORY (nouveaux services uniquement) ──────────────
+
+  chroma:
+    image: chromadb/chroma:latest
+    container_name: paperclip-chroma
+    restart: unless-stopped
+    environment:
+      IS_PERSISTENT: "TRUE"
+      ANONYMIZED_TELEMETRY: "FALSE"
+    volumes:
+      - chroma_data:/chroma/chroma
+    ports:
+      - "8000:8000"
+    networks:
+      - dokploy-network
+
+  mem0:
+    build:
+      context: ../configs/mem0
+    container_name: paperclip-mem0
+    restart: unless-stopped
+    environment:
+      MEM0_CONFIG: /app/config.yaml
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      TRANSFORMERS_CACHE: /app/hf_cache
+      HF_HOME: /app/hf_cache
+    volumes:
+      - mem0_data:/app/data
+      - mem0_hf_cache:/app/hf_cache
+      - ../configs/mem0/config.yaml:/app/config.yaml:ro
+    ports:
+      - "8050:8050"
+    depends_on:
+      - chroma
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8050/health"]
+      interval: 30s
+      timeout: 15s
+      retries: 5
+      start_period: 120s
+    networks:
+      - dokploy-network
+
+  # ── PAPERCLIP (agent orchestrator) ─────────────────────────
+
+  paperclip:
+    build:
+      context: ../paperclip-repo
+    container_name: paperclip
+    restart: unless-stopped
+    environment:
+      # Utiliser le PostgreSQL existant (deviprop-postgres)
+      DATABASE_URL: postgresql://${POSTGRES_ADMIN_USER:-admin}:${POSTGRES_ADMIN_PASSWORD}@deviprop-postgres:5432/paperclip_db
+      BETTER_AUTH_SECRET: ${PAPERCLIP_AUTH_SECRET:?Set PAPERCLIP_AUTH_SECRET}
+      PAPERCLIP_PUBLIC_URL: ${PAPERCLIP_PUBLIC_URL:-http://localhost:3100}
+      PAPERCLIP_ALLOWED_HOSTNAMES: ${PAPERCLIP_ALLOWED_HOSTNAMES:-localhost}
+      PAPERCLIP_DEPLOYMENT_MODE: authenticated
+      BETTER_AUTH_TRUSTED_ORIGINS: ${PAPERCLIP_PUBLIC_URL:-http://localhost:3100}
+      CLAUDE_CONFIG_DIR: /claude-config
+      MEM0_URL: http://paperclip-mem0:8050
+      # Utiliser le Gitea existant (sur port 3001)
+      GITEA_URL: http://gitea:3000
+      GITEA_API_TOKEN: ${GITEA_API_TOKEN}
+      PAPERCLIP_AGENT_JWT_SECRET: ${PAPERCLIP_AGENT_JWT_SECRET:?Set PAPERCLIP_AGENT_JWT_SECRET}
+      PAPERCLIP_ADMIN_EMAIL: ${PAPERCLIP_ADMIN_EMAIL:-admin@paperclip.local}
+      PAPERCLIP_ADMIN_PASSWORD: ${PAPERCLIP_ADMIN_PASSWORD:?Set PAPERCLIP_ADMIN_PASSWORD}
+      PAPERCLIP_ADMIN_NAME: ${PAPERCLIP_ADMIN_NAME:-Admin}
+      # Dokploy integration (utiliser celui qui tourne déjà)
+      DOKPLOY_API_URL: ${DOKPLOY_API_URL:-http://host.docker.internal:3000}
+      DOKPLOY_API_TOKEN: ${DOKPLOY_API_TOKEN:-}
+      DOKPLOY_WEBHOOK_URL: ${DOKPLOY_WEBHOOK_URL:-}
+      DOKPLOY_DOMAIN: ${DOKPLOY_DOMAIN:-}
+    entrypoint: ["/bin/sh", "-c", "sh /app/init-admin.sh & exec node --import ./server/node_modules/tsx/dist/loader.mjs server/dist/index.js"]
+    volumes:
+      - paperclip_data:/paperclip
+      - ../init-admin.sh:/app/init-admin.sh:ro
+      - ~/.claude-config:/claude-config
+    ports:
+      - "3100:3100"
+    # Se connecter au réseau existant de Dokploy
+    networks:
+      - dokploy-network
+    # Dépendances: attendre que Mem0 soit prêt
+    depends_on:
+      mem0:
+        condition: service_healthy
+
+volumes:
+  chroma_data:
+  mem0_data:
+  mem0_hf_cache:
+  paperclip_data:
+
+networks:
+  # Utiliser le réseau existant de Dokploy
+  dokploy-network:
+    external: true
