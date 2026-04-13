@@ -1,0 +1,3 @@
+[submodule "docker/paperclip-repo"]
+	path = docker/paperclip-repo
+	url = https://github.com/paperclipai/paperclip
